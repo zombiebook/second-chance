@@ -72,10 +72,12 @@ namespace secondchance
         private float _playerMaxObservedHealth;
         private float _downStartHealth;
 
-        private const float DownDuration = 20f;      // 다운 유지 시간
+        // ★ 빈사(세컨드 찬스) 유지 시간 10초
+        private const float DownDuration = 10f;
         private const float MinDownHealth = 1f;      // 다운 중 최소 HP
         private const float DownHpPercent = 0.99f;   // 세컨드 찬스 HP = 최대의 99%
 
+        private MethodInfo _healthKillMethod;
         private PropertyInfo _healthIsDeadProperty;
         private FieldInfo[] _playerDeadFlagFields;
 
@@ -84,9 +86,6 @@ namespace secondchance
 
         private bool _hpUiHidden;
         private readonly List<GameObject> _hpUiObjects = new List<GameObject>();
-
-        // 강제로 진짜 죽일 때 한 번만 HP 0 허용용
-        private bool _allowRealDeathNow;
 
         // ─────────────────────────────────────────────
         // 초기화
@@ -112,12 +111,27 @@ namespace secondchance
             {
                 Type healthType = typeof(Health);
 
+                // Kill 메서드 있으면 나중에 강제 킬용으로 호출
+                try
+                {
+                    _healthKillMethod = healthType.GetMethod(
+                        "Kill",
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                    );
+                }
+                catch
+                {
+                    _healthKillMethod = null;
+                }
+
                 _healthIsDeadProperty = healthType.GetProperty(
                     "IsDead",
                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
                 );
 
-                Debug.Log("[SecondChance] Health 리플렉션 캐시 완료");
+                Debug.Log("[SecondChance] Health 리플렉션 캐시 완료 - Kill=" +
+                          (_healthKillMethod != null) + ", IsDead=" +
+                          (_healthIsDeadProperty != null));
             }
             catch (Exception ex)
             {
@@ -154,9 +168,6 @@ namespace secondchance
         private void HandleSetCurrentHealth(Health health, ref float value)
         {
             if (!IsPlayerHealth(health))
-                return;
-
-            if (_allowRealDeathNow)
                 return;
 
             // 아직 세컨드 찬스를 안 쓴 상태에서, HP를 올려주는 값이면 최대 체력 후보로 갱신
@@ -218,7 +229,7 @@ namespace secondchance
             if (_playerHealth == health && _player != null)
                 return true;
 
-            // 2) 아직 모르면 강제로 플레이어를 찾아서 캐시
+            // 2) 아직 모르면 카메라 기준 가장 가까운 CharacterMainControl을 플레이어로
             if (!EnsurePlayer())
                 return false;
 
@@ -255,7 +266,8 @@ namespace secondchance
             TryClearIsDeadFlag(_playerHealth);
             TryClearPlayerDeadFlags();
 
-            _downTimer -= Time.deltaTime;
+            // ★ 항상 “현실 시간” 10초 기준으로 깎이게 언스케일드 타임 사용
+            _downTimer -= Time.unscaledDeltaTime;
 
             // 다운 시작 HP(99%)보다 더 회복하면 생존
             if (_playerHealth.CurrentHealth > (_downStartHealth + 0.5f))
@@ -264,11 +276,11 @@ namespace secondchance
                 return;
             }
 
-            // 시간 초과 → 그냥 이 판은 죽는 걸로 (여긴 게임 기본 로직에 맡김)
+            // ★ 시간 초과 → 강제 사망
             if (_downTimer <= 0f)
             {
-                ExitDownState(success: false);
-                // 강제 Kill까지는 안 하고, 이제부터 들어오는 HP 0 / Kill은 그대로 통과
+                ForceKillPlayer();
+                return;
             }
         }
 
@@ -283,7 +295,66 @@ namespace secondchance
             if (success)
                 Debug.Log("[SecondChance] 다운 종료 - 추가 회복 성공 (생존)");
             else
-                Debug.Log("[SecondChance] 다운 종료 - 시간 초과 (이후 사망 가능)");
+                Debug.Log("[SecondChance] 다운 종료 - 시간 초과 (사망 처리 진행)");
+        }
+
+        // 타이머 0 초과 시 강제 사망 처리
+        private void ForceKillPlayer()
+        {
+            if (_playerHealth == null)
+                return;
+
+            // 다운 상태 종료 + UI 복구 (이제 더 이상 무적/보정 안 걸림)
+            ExitDownState(success: false);
+
+            try
+            {
+                bool killInvoked = false;
+
+                // Health.Kill() 메서드가 있으면 가능한 한 그걸 호출
+                if (_healthKillMethod != null)
+                {
+                    try
+                    {
+                        var ps = _healthKillMethod.GetParameters();
+                        object[] args = null;
+
+                        if (ps != null && ps.Length > 0)
+                        {
+                            args = new object[ps.Length];
+                            for (int i = 0; i < ps.Length; i++)
+                            {
+                                Type pt = ps[i].ParameterType;
+                                args[i] = pt.IsValueType ? Activator.CreateInstance(pt) : null;
+                            }
+                        }
+
+                        _healthKillMethod.Invoke(_playerHealth, args);
+                        killInvoked = true;
+                        Debug.Log("[SecondChance] ForceKillPlayer: Health.Kill() 호출");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.Log("[SecondChance] ForceKillPlayer Kill 호출 실패: " + ex);
+                    }
+                }
+
+                // Kill 메서드를 못 찾았거나 호출 실패했다면, IsDead=true + HP=0으로 강제
+                if (!killInvoked)
+                {
+                    if (_healthIsDeadProperty != null && _healthIsDeadProperty.CanWrite)
+                    {
+                        _healthIsDeadProperty.SetValue(_playerHealth, true, null);
+                    }
+
+                    _playerHealth.CurrentHealth = 0f;
+                    Debug.Log("[SecondChance] ForceKillPlayer: Kill 없음 → HP=0 / IsDead=true 설정");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.Log("[SecondChance] ForceKillPlayer 예외: " + ex);
+            }
         }
 
         // ─────────────────────────────────────────────
@@ -299,7 +370,7 @@ namespace secondchance
                 if (_healthIsDeadProperty.CanRead)
                 {
                     object v = _healthIsDeadProperty.GetValue(health, null);
-                    if (v is bool && (bool)v == true && !_allowRealDeathNow)
+                    if (v is bool && (bool)v == true)
                     {
                         if (_healthIsDeadProperty.CanWrite)
                             _healthIsDeadProperty.SetValue(health, false, null);
@@ -361,7 +432,7 @@ namespace secondchance
                     if (f == null) continue;
 
                     object v = f.GetValue(_player);
-                    if (v is bool && (bool)v == true && !_allowRealDeathNow)
+                    if (v is bool && (bool)v == true)
                         f.SetValue(_player, false);
                 }
             }
@@ -487,7 +558,6 @@ namespace secondchance
                             _secondChanceUsed = false;
                             _isDowned = false;
                             _playerMaxObservedHealth = _playerHealth.CurrentHealth;
-                            _allowRealDeathNow = false;
                             RestoreHpUI();
 
                             Debug.Log("[SecondChance] EnsurePlayer: 새 플레이어 감지 - 상태 초기화");
