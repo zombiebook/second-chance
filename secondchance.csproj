@@ -1,0 +1,101 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- ===== 기본 설정 ===== -->
+  <PropertyGroup>
+    <!-- Duckov는 .NET Framework 4.x 계열이라 net48 사용 -->
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Library</OutputType>
+
+    <AssemblyName>secondchance</AssemblyName>
+    <RootNamespace>secondchance</RootNamespace>
+
+    <LangVersion>9.0</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- 기본 Compile(glob) 끄고, 아래에서 직접 secondchance.cs만 포함 -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <!-- ===== 소스 코드 파일 ===== -->
+  <ItemGroup>
+    <!-- 이 파일 이름이 지금 쓰는 C# 파일 이름이랑 같아야 함 -->
+    <Compile Include="secondchance.cs" />
+  </ItemGroup>
+
+  <!-- ===== 게임 / Unity / Duckov / Harmony 참조 ===== -->
+  <ItemGroup>
+    <!-- Duckov 메인 게임 어셈블리 -->
+    <Reference Include="Assembly-CSharp">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov\Duckov_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <!-- Duckov 전용 네임스페이스 (Duckov.*, CharacterMainControl, Health 등) -->
+
+    <!-- ItemStatsSystem (아이템/스탯 관련) -->
+    <Reference Include="ItemStatsSystem">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov\Duckov_Data\Managed\ItemStatsSystem.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <!-- UnityEngine 모듈들 -->
+    <Reference Include="UnityEngine">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov\Duckov_Data\Managed\UnityEngine.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov\Duckov_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov\Duckov_Data\Managed\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <Reference Include="UnityEngine.AnimationModule">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov\Duckov_Data\Managed\UnityEngine.AnimationModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov\Duckov_Data\Managed\UnityEngine.AudioModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov\Duckov_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <!-- OnGUI / GUI / GUIStyle 사용용 IMGUI 모듈 -->
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov\Duckov_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <!-- 필요 시 Text 관련 쓸 때 대비 (현재 코드에선 필수는 아님, 여유로 추가) -->
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov\Duckov_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+<Reference Include="TeamSoda.Duckov.Core">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov\Duckov_Data\Managed\TeamSoda.Duckov.Core.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <Reference Include="TeamSoda.Duckov.Utilities">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov\Duckov_Data\Managed\TeamSoda.Duckov.Utilities.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+	
+    <!-- ===== Harmony (BepInEx\core\0Harmony.dll) ===== -->
+    <Reference Include="0Harmony">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov\BepInEx\core\0Harmony.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>
